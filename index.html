@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>三M 田徑成長紀錄</title>
+    <title>三M 田徑成長紀錄 (編輯版)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 15px; background-color: #f0f2f5; }
@@ -13,9 +13,10 @@
         select, input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         button { background: #1a73e8; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; flex: 1; font-weight: bold; }
+        .btn-edit { background: #f39c12; font-size: 0.8rem; padding: 5px 10px; margin-right: 5px; }
         .btn-secondary { background: #5f6368; }
         .btn-export { background: #34a853; }
-        .btn-danger { background: #ea4335; font-size: 0.8rem; padding: 8px; }
+        .btn-danger { background: #ea4335; font-size: 0.8rem; padding: 5px 10px; }
         .table-wrapper { max-height: 400px; overflow-y: auto; margin-top: 10px; border: 1px solid #eee; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         th, td { border-bottom: 1px solid #eee; padding: 12px 8px; text-align: left; }
@@ -23,12 +24,14 @@
         .award-tag { color: #d9480f; font-weight: bold; font-size: 0.8rem; }
         .chart-container { position: relative; height: 300px; width: 100%; margin-top: 10px; }
         .filter-box { display: flex; gap: 5px; margin-bottom: 10px; }
+        .editing { border: 2px solid #f39c12 !important; background-color: #fffdf0; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>📝 錄入成績與獎項</h2>
+    <div class="card" id="inputCard">
+        <h2 id="formTitle">📝 錄入成績與獎項</h2>
+        <input type="hidden" id="editId">
         <input type="date" id="date" class="form-group">
         <input type="text" id="compName" placeholder="比賽名稱" class="form-group">
         <div class="btn-group">
@@ -41,7 +44,10 @@
         </div>
         <input type="number" id="result" step="0.01" placeholder="成績 (秒/米)" class="form-group" style="margin-top:10px;">
         <input type="text" id="award" placeholder="獲獎紀錄 (選填)" class="form-group">
-        <button onclick="saveRecord()">儲存紀錄</button>
+        <div class="btn-group">
+            <button id="submitBtn" onclick="saveRecord()">儲存紀錄</button>
+            <button id="cancelBtn" onclick="cancelEdit()" class="btn-secondary" style="display:none">取消修改</button>
+        </div>
     </div>
 
     <div class="card">
@@ -60,7 +66,7 @@
     </div>
 
     <div class="card">
-        <h2>💾 數據備份</h2>
+        <h2>💾 數據管理</h2>
         <div class="btn-group">
             <button class="btn-export" onclick="exportCSV()">導出備份</button>
             <button class="btn-secondary" onclick="document.getElementById('importFile').click()">匯入</button>
@@ -96,9 +102,10 @@
 
     function saveRecord() {
         const resultVal = document.getElementById('result').value;
+        const editId = document.getElementById('editId').value;
         if(!resultVal) return alert("請輸入成績！");
-        const record = {
-            id: Date.now(),
+
+        const recordData = {
             date: document.getElementById('date').value,
             comp: document.getElementById('compName').value || "平日練習",
             name: document.getElementById('athlete').value,
@@ -106,8 +113,56 @@
             result: parseFloat(resultVal),
             award: document.getElementById('award').value || ""
         };
-        records.push(record);
+
+        if (editId) {
+            // 編輯模式
+            const index = records.findIndex(r => r.id == editId);
+            if (index !== -1) {
+                records[index] = { ...records[index], ...recordData };
+                cancelEdit(); // 重置表單
+            }
+        } else {
+            // 新增模式
+            recordData.id = Date.now();
+            records.push(recordData);
+        }
+
         saveAndRender();
+        document.getElementById('result').value = "";
+        document.getElementById('award').value = "";
+    }
+
+    function editRecord(id) {
+        const record = records.find(r => r.id == id);
+        if (!record) return;
+
+        // 填充表單
+        document.getElementById('editId').value = record.id;
+        document.getElementById('date').value = record.date;
+        document.getElementById('compName').value = record.comp;
+        document.getElementById('athlete').value = record.name;
+        document.getElementById('event').value = record.event;
+        document.getElementById('result').value = record.result;
+        document.getElementById('award').value = record.award;
+
+        // 改變界面樣式
+        document.getElementById('formTitle').innerText = "✏️ 修改紀錄";
+        document.getElementById('submitBtn').innerText = "更新紀錄";
+        document.getElementById('cancelBtn').style.display = "block";
+        document.getElementById('inputCard').classList.add('editing');
+
+        // 捲動到頂部方便編輯
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+        document.getElementById('editId').value = "";
+        document.getElementById('formTitle').innerText = "📝 錄入成績與獎項";
+        document.getElementById('submitBtn').innerText = "儲存紀錄";
+        document.getElementById('cancelBtn').style.display = "none";
+        document.getElementById('inputCard').classList.remove('editing');
+        document.getElementById('date').valueAsDate = new Date();
+        document.getElementById('compName').value = "";
         document.getElementById('result').value = "";
         document.getElementById('award').value = "";
     }
@@ -120,7 +175,6 @@
 
     function renderTable() {
         const tbody = document.querySelector('#historyTable tbody');
-        // 顯示最近 100 條
         tbody.innerHTML = records.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 100).map(r => `
             <tr>
                 <td>${r.date.slice(5)}<br><small style="color:#888">${r.event}</small></td>
@@ -129,7 +183,10 @@
                     <b>${r.result}${trackEvents.includes(r.event) ? 's' : 'm'}</b>
                     ${r.award ? `<br><span class="award-tag">🏆 ${r.award}</span>` : ''}
                 </td>
-                <td><button class="btn-danger" style="padding:2px 6px" onclick="deleteRecord(${r.id})">×</button></td>
+                <td>
+                    <button class="btn-edit" onclick="editRecord(${r.id})">改</button>
+                    <button class="btn-danger" onclick="deleteRecord(${r.id})">×</button>
+                </td>
             </tr>
         `).join('');
     }
@@ -141,12 +198,11 @@
         const isTrack = trackEvents.includes(selectedEvent);
         const colors = { 'Mason': '#1a73e8', 'Megan': '#e91e63', 'Margaret': '#34a853' };
 
-        // 篩選特定運動員和項目的數據
         const filtered = records.filter(r => r.name === selectedAthlete && r.event === selectedEvent)
                                .sort((a,b) => new Date(a.date) - new Date(b.date));
 
         const datasets = [{
-            label: `${selectedAthlete} - ${selectedEvent} 表現`,
+            label: `${selectedAthlete} - ${selectedEvent}`,
             data: filtered.map(r => ({ x: r.date, y: r.result })),
             borderColor: colors[selectedAthlete],
             backgroundColor: colors[selectedAthlete] + '22',
@@ -163,15 +219,9 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: {
-                        reverse: isTrack,
-                        title: { display: true, text: isTrack ? '秒 (向下代表進步)' : '公尺 (向上代表進步)' },
-                        ticks: { stepSize: isTrack ? 0.5 : 0.1 }
-                    }
+                    y: { reverse: isTrack }
                 },
-                plugins: {
-                    legend: { display: false }
-                }
+                plugins: { legend: { display: false } }
             }
         });
     }
