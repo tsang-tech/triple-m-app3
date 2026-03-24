@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>三M 田徑成長紀錄 (編輯版)</title>
+    <title>三M 田徑成長紀錄 (PB 榮譽版)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 15px; background-color: #f0f2f5; }
@@ -17,14 +17,21 @@
         .btn-secondary { background: #5f6368; }
         .btn-export { background: #34a853; }
         .btn-danger { background: #ea4335; font-size: 0.8rem; padding: 5px 10px; }
-        .table-wrapper { max-height: 400px; overflow-y: auto; margin-top: 10px; border: 1px solid #eee; border-radius: 8px; }
+        .table-wrapper { max-height: 350px; overflow-y: auto; margin-top: 10px; border: 1px solid #eee; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         th, td { border-bottom: 1px solid #eee; padding: 12px 8px; text-align: left; }
         th { background: #f8f9fa; position: sticky; top: 0; color: #888; }
+        .pb-text { color: #ea4335; font-weight: bold; } /* 歷史紀錄中的 PB 紅色字 */
         .award-tag { color: #d9480f; font-weight: bold; font-size: 0.8rem; }
         .chart-container { position: relative; height: 300px; width: 100%; margin-top: 10px; }
         .filter-box { display: flex; gap: 5px; margin-bottom: 10px; }
         .editing { border: 2px solid #f39c12 !important; background-color: #fffdf0; }
+        .pb-summary-table { font-size: 0.8rem; margin-top: 10px; }
+        .pb-summary-table th { background: #e8f0fe; color: #1a73e8; font-weight: bold; }
+        .pb-summary-table td { font-weight: bold; }
+        .pb-summary-table .mason-pb { color: #1a73e8; }
+        .pb-summary-table .megan-pb { color: #e91e63; }
+        .pb-summary-table .margaret-pb { color: #34a853; }
     </style>
 </head>
 <body>
@@ -66,15 +73,6 @@
     </div>
 
     <div class="card">
-        <h2>💾 數據管理</h2>
-        <div class="btn-group">
-            <button class="btn-export" onclick="exportCSV()">導出備份</button>
-            <button class="btn-secondary" onclick="document.getElementById('importFile').click()">匯入</button>
-            <input type="file" id="importFile" style="display:none" onchange="importCSV(event)">
-        </div>
-    </div>
-
-    <div class="card">
         <h2>🏆 歷史紀錄 (最近 100 條)</h2>
         <div class="table-wrapper">
             <table id="historyTable">
@@ -82,7 +80,26 @@
                 <tbody></tbody>
             </table>
         </div>
-        <button class="btn-danger" onclick="clearAll()" style="width:auto; margin-top:15px; background:none; color:#999; border:1px solid #ddd;">清空數據</button>
+    </div>
+
+    <div class="card">
+        <h2>🏅 三M 個人最佳 (PB) 榮譽榜</h2>
+        <div class="table-wrapper" style="max-height:auto;">
+            <table class="pb-summary-table" id="pbSummaryTable">
+                <thead><tr><th>運動項目</th><th>Mason</th><th>Megan</th><th>Margaret</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <button class="btn-danger" onclick="clearAll()" style="width:auto; margin-top:20px; background:none; color:#999; border:1px solid #ddd;">清空數據</button>
+    </div>
+
+    <div class="card">
+        <h2>💾 數據備份</h2>
+        <div class="btn-group">
+            <button class="btn-export" onclick="exportCSV()">導出備份</button>
+            <button class="btn-secondary" onclick="document.getElementById('importFile').click()">匯入</button>
+            <input type="file" id="importFile" style="display:none" onchange="importCSV(event)">
+        </div>
     </div>
 
 <script>
@@ -104,29 +121,14 @@
         const resultVal = document.getElementById('result').value;
         const editId = document.getElementById('editId').value;
         if(!resultVal) return alert("請輸入成績！");
-
-        const recordData = {
-            date: document.getElementById('date').value,
-            comp: document.getElementById('compName').value || "平日練習",
-            name: document.getElementById('athlete').value,
-            event: document.getElementById('event').value,
-            result: parseFloat(resultVal),
-            award: document.getElementById('award').value || ""
-        };
-
+        const recordData = { date: document.getElementById('date').value, comp: document.getElementById('compName').value || "平日練習", name: document.getElementById('athlete').value, event: document.getElementById('event').value, result: parseFloat(resultVal), award: document.getElementById('award').value || "" };
         if (editId) {
-            // 編輯模式
             const index = records.findIndex(r => r.id == editId);
-            if (index !== -1) {
-                records[index] = { ...records[index], ...recordData };
-                cancelEdit(); // 重置表單
-            }
+            if (index !== -1) { records[index] = { ...records[index], ...recordData }; cancelEdit(); }
         } else {
-            // 新增模式
             recordData.id = Date.now();
             records.push(recordData);
         }
-
         saveAndRender();
         document.getElementById('result').value = "";
         document.getElementById('award').value = "";
@@ -135,8 +137,6 @@
     function editRecord(id) {
         const record = records.find(r => r.id == id);
         if (!record) return;
-
-        // 填充表單
         document.getElementById('editId').value = record.id;
         document.getElementById('date').value = record.date;
         document.getElementById('compName').value = record.comp;
@@ -144,14 +144,10 @@
         document.getElementById('event').value = record.event;
         document.getElementById('result').value = record.result;
         document.getElementById('award').value = record.award;
-
-        // 改變界面樣式
         document.getElementById('formTitle').innerText = "✏️ 修改紀錄";
         document.getElementById('submitBtn').innerText = "更新紀錄";
         document.getElementById('cancelBtn').style.display = "block";
         document.getElementById('inputCard').classList.add('editing');
-
-        // 捲動到頂部方便編輯
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -171,24 +167,92 @@
         localStorage.setItem('sportsRecords', JSON.stringify(records));
         renderTable();
         updateChart();
+        renderPbSummary(); // 更新 PB 統計表
     }
 
     function renderTable() {
         const tbody = document.querySelector('#historyTable tbody');
-        tbody.innerHTML = records.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 100).map(r => `
-            <tr>
-                <td>${r.date.slice(5)}<br><small style="color:#888">${r.event}</small></td>
-                <td>${r.name}</td>
-                <td>
-                    <b>${r.result}${trackEvents.includes(r.event) ? 's' : 'm'}</b>
-                    ${r.award ? `<br><span class="award-tag">🏆 ${r.award}</span>` : ''}
-                </td>
-                <td>
-                    <button class="btn-edit" onclick="editRecord(${r.id})">改</button>
-                    <button class="btn-danger" onclick="deleteRecord(${r.id})">×</button>
-                </td>
-            </tr>
-        `).join('');
+
+        // 先計算每個項目的 PB，供紅色字顯示參考
+        const pbMap = {};
+        records.forEach(r => {
+            if(!pbMap[r.name]) pbMap[r.name] = {};
+            const isTrack = trackEvents.includes(r.event);
+            const currentPB = pbMap[r.name][r.event];
+            if(!currentPB) {
+                pbMap[r.name][r.event] = r.result;
+            } else {
+                if(isTrack && r.result < currentPB) {
+                    pbMap[r.name][r.event] = r.result;
+                } else if(!isTrack && r.result > currentPB) {
+                    pbMap[r.name][r.event] = r.result;
+                }
+            }
+        });
+
+        tbody.innerHTML = records.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 100).map(r => {
+            const isTrack = trackEvents.includes(r.event);
+            const isPB = r.result === pbMap[r.name][r.event]; // 判斷是否為個人最佳
+
+            return `
+                <tr>
+                    <td>${r.date.slice(5)}<br><small style="color:#888">${r.event}</small></td>
+                    <td>${r.name}</td>
+                    <td>
+                        <b class="${isPB ? 'pb-text' : ''}">${r.result}${isTrack ? 's' : 'm'}</b>
+                        ${isPB ? '<br><small class="pb-text">Personal Best</small>' : ''}
+                        ${r.award ? `<br><span class="award-tag">🏆 ${r.award}</span>` : ''}
+                    </td>
+                    <td>
+                        <button class="btn-edit" onclick="editRecord(${r.id})">改</button>
+                        <button class="btn-danger" onclick="deleteRecord(${r.id})">×</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // 新增：個人最佳紀錄統計表 (PB Summary)
+    function renderPbSummary() {
+        const tbody = document.querySelector('#pbSummaryTable tbody');
+        const athletes = ["Mason", "Megan", "Margaret"];
+        const pbMap = {};
+
+        // 初始化所有項目的 PB Map
+        events.forEach(e => pbMap[e] = {});
+
+        // 計算每個孩子在每個項目下的 PB
+        records.forEach(r => {
+            const isTrack = trackEvents.includes(r.event);
+            const currentPB = pbMap[r.event][r.name];
+
+            if(!currentPB) {
+                pbMap[r.event][r.name] = r.result;
+            } else {
+                if(isTrack && r.result < currentPB) {
+                    pbMap[r.event][r.name] = r.result;
+                } else if(!isTrack && r.result > currentPB) {
+                    pbMap[r.event][r.name] = r.result;
+                }
+            }
+        });
+
+        // 渲染表格
+        tbody.innerHTML = events.map(e => {
+            const isTrack = trackEvents.includes(e);
+            const masonPB = pbMap[e]["Mason"] ? `${pbMap[e]["Mason"]}${isTrack ? 's' : 'm'}` : '--';
+            const meganPB = pbMap[e]["Megan"] ? `${pbMap[e]["Megan"]}${isTrack ? 's' : 'm'}` : '--';
+            const margaretPB = pbMap[e]["Margaret"] ? `${pbMap[e]["Margaret"]}${isTrack ? 's' : 'm'}` : '--';
+
+            return `
+                <tr>
+                    <td><b>${e}</b></td>
+                    <td class="pb-summary-table mason-pb">${masonPB}</td>
+                    <td class="pb-summary-table megan-pb">${meganPB}</td>
+                    <td class="pb-summary-table margaret-pb">${margaretPB}</td>
+                </tr>
+            `;
+        }).join('');
     }
 
     function updateChart() {
@@ -275,7 +339,7 @@
     }
 
     renderAll();
-    function renderAll() { renderTable(); updateChart(); }
+    function renderAll() { renderTable(); updateChart(); renderPbSummary(); }
 </script>
 </body>
 </html>
