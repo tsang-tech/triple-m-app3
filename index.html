@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>三M 田徑成長紀錄 (PB 榮譽版)</title>
+    <title>三M 運動追蹤 2.0 (動態比例版)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <style>
         body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 15px; background-color: #f0f2f5; }
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
@@ -17,13 +19,13 @@
         .btn-secondary { background: #5f6368; }
         .btn-export { background: #34a853; }
         .btn-danger { background: #ea4335; font-size: 0.8rem; padding: 5px 10px; }
-        .table-wrapper { max-height: 350px; overflow-y: auto; margin-top: 10px; border: 1px solid #eee; border-radius: 8px; }
+        .table-wrapper { max-height: 300px; overflow-y: auto; margin-top: 10px; border: 1px solid #eee; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         th, td { border-bottom: 1px solid #eee; padding: 12px 8px; text-align: left; }
         th { background: #f8f9fa; position: sticky; top: 0; color: #888; }
-        .pb-text { color: #ea4335; font-weight: bold; } /* 歷史紀錄中的 PB 紅色字 */
+        .pb-text { color: #ea4335; font-weight: bold; }
         .award-tag { color: #d9480f; font-weight: bold; font-size: 0.8rem; }
-        .chart-container { position: relative; height: 300px; width: 100%; margin-top: 10px; }
+        .chart-container { position: relative; height: 350px; width: 100%; margin-top: 10px; touch-action: pan-y; } /* 優化觸控 */
         .filter-box { display: flex; gap: 5px; margin-bottom: 10px; }
         .editing { border: 2px solid #f39c12 !important; background-color: #fffdf0; }
         .pb-summary-table { font-size: 0.8rem; margin-top: 10px; }
@@ -32,6 +34,7 @@
         .pb-summary-table .mason-pb { color: #1a73e8; }
         .pb-summary-table .megan-pb { color: #e91e63; }
         .pb-summary-table .margaret-pb { color: #34a853; }
+        .hint { font-size: 0.75rem; color: #888; margin-top: 5px; text-align: center; }
     </style>
 </head>
 <body>
@@ -53,12 +56,12 @@
         <input type="text" id="award" placeholder="獲獎紀錄 (選填)" class="form-group">
         <div class="btn-group">
             <button id="submitBtn" onclick="saveRecord()">儲存紀錄</button>
-            <button id="cancelBtn" onclick="cancelEdit()" class="btn-secondary" style="display:none">取消修改</button>
+            <button id="cancelBtn" onclick="cancelEdit()" class="btn-secondary" style="display:none">取消</button>
         </div>
     </div>
 
     <div class="card">
-        <h2>📈 個別進步曲線</h2>
+        <h2>📈 進步趨勢 (支援左右滑動/縮放)</h2>
         <div class="filter-box">
             <select id="viewAthlete" onchange="updateChart()" style="flex:1">
                 <option value="Mason">Mason</option>
@@ -70,6 +73,8 @@
         <div class="chart-container">
             <canvas id="progressChart"></canvas>
         </div>
+        <p class="hint">💡 提示：可在圖表上左右滑動查看歷史，雙指縮放時間間距</p>
+        <button onclick="resetChartZoom()" style="background:#eee; color:#666; font-size:0.7rem; padding:5px; margin-top:10px; width:auto;">重置縮放</button>
     </div>
 
     <div class="card">
@@ -84,7 +89,7 @@
 
     <div class="card">
         <h2>🏅 三M 個人最佳 (PB) 榮譽榜</h2>
-        <div class="table-wrapper" style="max-height:auto;">
+        <div class="table-wrapper">
             <table class="pb-summary-table" id="pbSummaryTable">
                 <thead><tr><th>運動項目</th><th>Mason</th><th>Megan</th><th>Margaret</th></tr></thead>
                 <tbody></tbody>
@@ -105,7 +110,7 @@
 <script>
     const events = ["20米", "30米", "30米欄", "60米", "60米欄", "100米", "200米", "400米", "800米", "立定跳遠", "跳遠", "立定跨步跳", "立定三級跳", "擲豆袋", "擲壘球", "擲火箭槍"];
     const trackEvents = ["20米", "30米", "30米欄", "60米", "60米欄", "100米", "200米", "400米", "800米"];
-
+    
     let records = JSON.parse(localStorage.getItem('sportsRecords')) || [];
     let myChart;
 
@@ -167,33 +172,24 @@
         localStorage.setItem('sportsRecords', JSON.stringify(records));
         renderTable();
         updateChart();
-        renderPbSummary(); // 更新 PB 統計表
+        renderPbSummary();
     }
 
     function renderTable() {
         const tbody = document.querySelector('#historyTable tbody');
-
-        // 先計算每個項目的 PB，供紅色字顯示參考
         const pbMap = {};
         records.forEach(r => {
             if(!pbMap[r.name]) pbMap[r.name] = {};
             const isTrack = trackEvents.includes(r.event);
             const currentPB = pbMap[r.name][r.event];
-            if(!currentPB) {
+            if(!currentPB || (isTrack && r.result < currentPB) || (!isTrack && r.result > currentPB)) {
                 pbMap[r.name][r.event] = r.result;
-            } else {
-                if(isTrack && r.result < currentPB) {
-                    pbMap[r.name][r.event] = r.result;
-                } else if(!isTrack && r.result > currentPB) {
-                    pbMap[r.name][r.event] = r.result;
-                }
             }
         });
 
         tbody.innerHTML = records.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 100).map(r => {
             const isTrack = trackEvents.includes(r.event);
-            const isPB = r.result === pbMap[r.name][r.event]; // 判斷是否為個人最佳
-
+            const isPB = r.result === pbMap[r.name][r.event];
             return `
                 <tr>
                     <td>${r.date.slice(5)}<br><small style="color:#888">${r.event}</small></td>
@@ -212,46 +208,24 @@
         }).join('');
     }
 
-    // 新增：個人最佳紀錄統計表 (PB Summary)
     function renderPbSummary() {
         const tbody = document.querySelector('#pbSummaryTable tbody');
-        const athletes = ["Mason", "Megan", "Margaret"];
         const pbMap = {};
-
-        // 初始化所有項目的 PB Map
         events.forEach(e => pbMap[e] = {});
-
-        // 計算每個孩子在每個項目下的 PB
         records.forEach(r => {
             const isTrack = trackEvents.includes(r.event);
             const currentPB = pbMap[r.event][r.name];
-
-            if(!currentPB) {
+            if(!currentPB || (isTrack && r.result < currentPB) || (!isTrack && r.result > currentPB)) {
                 pbMap[r.event][r.name] = r.result;
-            } else {
-                if(isTrack && r.result < currentPB) {
-                    pbMap[r.event][r.name] = r.result;
-                } else if(!isTrack && r.result > currentPB) {
-                    pbMap[r.event][r.name] = r.result;
-                }
             }
         });
 
-        // 渲染表格
         tbody.innerHTML = events.map(e => {
             const isTrack = trackEvents.includes(e);
             const masonPB = pbMap[e]["Mason"] ? `${pbMap[e]["Mason"]}${isTrack ? 's' : 'm'}` : '--';
             const meganPB = pbMap[e]["Megan"] ? `${pbMap[e]["Megan"]}${isTrack ? 's' : 'm'}` : '--';
             const margaretPB = pbMap[e]["Margaret"] ? `${pbMap[e]["Margaret"]}${isTrack ? 's' : 'm'}` : '--';
-
-            return `
-                <tr>
-                    <td><b>${e}</b></td>
-                    <td class="pb-summary-table mason-pb">${masonPB}</td>
-                    <td class="pb-summary-table megan-pb">${meganPB}</td>
-                    <td class="pb-summary-table margaret-pb">${margaretPB}</td>
-                </tr>
-            `;
+            return `<tr><td><b>${e}</b></td><td class="pb-summary-table mason-pb">${masonPB}</td><td class="pb-summary-table megan-pb">${meganPB}</td><td class="pb-summary-table margaret-pb">${margaretPB}</td></tr>`;
         }).join('');
     }
 
@@ -270,9 +244,7 @@
             data: filtered.map(r => ({ x: r.date, y: r.result })),
             borderColor: colors[selectedAthlete],
             backgroundColor: colors[selectedAthlete] + '22',
-            tension: 0.3,
-            fill: true,
-            pointRadius: 5
+            tension: 0.3, fill: true, pointRadius: 5
         }];
 
         if (myChart) myChart.destroy();
@@ -282,14 +254,37 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {
-                    y: { reverse: isTrack }
+                scales: { 
+                    x: {
+                        type: 'time',
+                        time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
+                        title: { display: true, text: '時間比例軸' }
+                    },
+                    y: { 
+                        reverse: isTrack,
+                        title: { display: true, text: isTrack ? '秒' : '米' }
+                    }
                 },
-                plugins: { legend: { display: false } }
+                plugins: {
+                    legend: { display: false },
+                    zoom: {
+                        pan: { enabled: true, mode: 'x', threshold: 10 },
+                        zoom: {
+                            wheel: { enabled: true },
+                            pinch: { enabled: true },
+                            mode: 'x',
+                        }
+                    }
+                }
             }
         });
     }
 
+    function resetChartZoom() {
+        if(myChart) myChart.resetZoom();
+    }
+
+    // (匯入匯出與刪除功能保持不變...)
     function exportCSV() {
         if(records.length === 0) return alert("沒有數據");
         let csv = "\uFEFF日期,比賽,姓名,項目,成績,獲獎\n";
@@ -297,7 +292,7 @@
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = `三M紀錄_備份.csv`;
+        link.download = `三M紀錄_2.0版.csv`;
         link.click();
     }
 
@@ -311,11 +306,7 @@
             for(let i = 1; i < lines.length; i++) {
                 const cols = lines[i].split(',');
                 if(cols.length >= 5) {
-                    newRecords.push({
-                        id: Date.now() + i,
-                        date: cols[0], comp: cols[1], name: cols[2], event: cols[3],
-                        result: parseFloat(cols[4]), award: cols[5] ? cols[5].trim() : ""
-                    });
+                    newRecords.push({ id: Date.now() + i, date: cols[0], comp: cols[1], name: cols[2], event: cols[3], result: parseFloat(cols[4]), award: cols[5] ? cols[5].trim() : "" });
                 }
             }
             records = newRecords;
@@ -325,17 +316,11 @@
     }
 
     function deleteRecord(id) {
-        if(confirm("確定刪除嗎？")) {
-            records = records.filter(r => r.id !== id);
-            saveAndRender();
-        }
+        if(confirm("確定刪除嗎？")) { records = records.filter(r => r.id !== id); saveAndRender(); }
     }
 
     function clearAll() {
-        if(confirm("確定清空所有數據？")) {
-            records = [];
-            saveAndRender();
-        }
+        if(confirm("確定清空所有數據？")) { records = []; saveAndRender(); }
     }
 
     renderAll();
