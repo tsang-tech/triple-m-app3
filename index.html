@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>三M 運動追蹤 2.5 完美版</title>
+    <title>三M 運動與成長追蹤 2.6</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -14,6 +14,7 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 15px; background-color: #f4f7f9; color: #333; }
         .card { background: white; padding: 18px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 15px; border: 1px solid #e1e8ed; }
         h2 { color: #1a73e8; margin-top: 0; font-size: 1.1rem; border-left: 5px solid #1a73e8; padding-left: 10px; margin-bottom: 15px; }
+        .h2-purple { color: #8e44ad; border-left-color: #8e44ad; }
         .form-group { margin-bottom: 10px; }
         select, input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; font-size: 16px; -webkit-appearance: none; }
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
@@ -47,13 +48,13 @@
         <input type="number" id="result" step="0.01" placeholder="成績 (秒 或 米)" class="form-group" style="margin-top:10px;">
         <input type="text" id="award" placeholder="獎項紀錄 (選填)" class="form-group">
         <div class="btn-group">
-            <button id="submitBtn" onclick="saveRecord()">儲存數據</button>
+            <button id="submitBtn" onclick="saveRecord()">儲存運動數據</button>
             <button id="cancelBtn" onclick="cancelEdit()" style="display:none; background:#747d8c;">取消修改</button>
         </div>
     </div>
 
     <div class="card">
-        <h2>📈 進步趨勢 (正確時間比例)</h2>
+        <h2>📈 進步趨勢 (含年份顯示)</h2>
         <div style="display:flex; gap:8px; margin-bottom:10px;">
             <select id="viewAthlete" onchange="updateChart()" style="flex:1"><option>Mason</option><option>Megan</option><option>Margaret</option></select>
             <select id="viewEvent" onchange="updateChart()" style="flex:1"></select>
@@ -75,34 +76,147 @@
         <div class="table-wrapper"><table id="pbSummaryTable"><thead><tr><th>運動項目</th><th>Mason</th><th>Megan</th><th>Margaret</th></tr></thead><tbody></tbody></table></div>
     </div>
 
+    <div class="card">
+        <h2 class="h2-purple">🧬 身體成長追蹤 (身高/體重/BMI)</h2>
+        
+        <div style="background:#f8f9fa; padding:12px; border-radius:10px; margin-bottom:15px; border:1px solid #eee;">
+            <div style="font-size:0.85rem; color:#555; margin-bottom:8px; font-weight:bold;">🎂 設定出生日期 (只需輸入一次，自動計算年齡)</div>
+            <div style="display:flex; gap:8px;">
+                <div style="flex:1"><small style="color:#888;">Mason</small><input type="date" id="dobMason" onchange="saveDOBs()" style="padding:8px; font-size:0.8rem"></div>
+                <div style="flex:1"><small style="color:#888;">Megan</small><input type="date" id="dobMegan" onchange="saveDOBs()" style="padding:8px; font-size:0.8rem"></div>
+                <div style="flex:1"><small style="color:#888;">Margaret</small><input type="date" id="dobMargaret" onchange="saveDOBs()" style="padding:8px; font-size:0.8rem"></div>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-bottom:15px; flex-wrap:wrap;">
+            <input type="date" id="bDate" class="form-group" style="flex:1; min-width:40%; margin-bottom:0;">
+            <select id="bName" class="form-group" style="flex:1; min-width:40%; margin-bottom:0;"><option>Mason</option><option>Megan</option><option>Margaret</option></select>
+            <input type="number" id="bHeight" step="0.1" placeholder="身高(cm)" class="form-group" style="flex:1; min-width:28%; margin-bottom:0;">
+            <input type="number" id="bWeight" step="0.1" placeholder="體重(kg)" class="form-group" style="flex:1; min-width:28%; margin-bottom:0;">
+            <button onclick="saveBodyStat()" style="background:#8e44ad; flex:1; min-width:30%;">＋ 紀錄身體</button>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="bodyTable">
+                <thead><tr><th>日期</th><th>姓名</th><th>年齡</th><th>數據</th><th>BMI</th><th>操作</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
     <div class="card" style="text-align:center; background:#f8f9fa;">
-        <div class="btn-group">
-            <button style="background:#2ed573" onclick="exportCSV()">導出 CSV 備份</button>
-            <button style="background:#747d8c" onclick="document.getElementById('importFile').click()">匯入 CSV</button>
+        <div class="btn-group" style="flex-wrap: wrap;">
+            <button style="background:#2ed573" onclick="exportCSV()">導出 運動數據</button>
+            <button style="background:#8e44ad" onclick="exportBodyCSV()">導出 身體數據</button>
+        </div>
+        <div style="margin-top:10px;">
+            <button style="background:#747d8c; width:100%" onclick="document.getElementById('importFile').click()">匯入 運動CSV</button>
             <input type="file" id="importFile" style="display:none" onchange="importCSV(event)">
         </div>
-        <button onclick="clearAll()" style="width:100%; margin-top:15px; background:none; color:#ff4757; border:1px solid #ff4757; padding:8px; font-size:0.8rem;">清空所有數據 (謹慎!)</button>
     </div>
 
 <script>
-    // 註冊插件
-    try { Chart.register(ChartZoom); } catch(e) { console.log("Zoom plugin error"); }
+    try { Chart.register(ChartZoom); } catch(e) { console.log("Zoom error"); }
 
     const events = ["20米", "30米", "30米欄", "60米", "60米欄", "100米", "200米", "400米", "800米", "立定跳遠", "跳遠", "立定跨步跳", "立定三級跳", "擲豆袋", "擲壘球", "擲火箭槍"];
     const trackEvents = ["20米", "30米", "30米欄", "60米", "60米欄", "100米", "200米", "400米", "800米"];
     
+    // 運動數據
     let records = JSON.parse(localStorage.getItem('sportsRecords')) || [];
     let myChart = null;
 
-    // 初始化下拉
+    // 身體數據與生日
+    let dobs = JSON.parse(localStorage.getItem('kidsDobs')) || { Mason: "", Megan: "", Margaret: "" };
+    let bodyRecords = JSON.parse(localStorage.getItem('bodyRecords')) || [];
+
+    // 初始化下拉與日期
     const ev1 = document.getElementById('event');
     const ev2 = document.getElementById('viewEvent');
-    events.forEach(e => {
-        ev1.add(new Option(e, e));
-        ev2.add(new Option(e, e));
-    });
-    document.getElementById('date').valueAsDate = new Date();
+    events.forEach(e => { ev1.add(new Option(e, e)); ev2.add(new Option(e, e)); });
+    
+    const today = new Date();
+    document.getElementById('date').valueAsDate = today;
+    document.getElementById('bDate').valueAsDate = today;
 
+    // 初始化生日顯示
+    document.getElementById('dobMason').value = dobs.Mason;
+    document.getElementById('dobMegan').value = dobs.Megan;
+    document.getElementById('dobMargaret').value = dobs.Margaret;
+
+    /* ========== 身體追蹤功能 ========== */
+    function saveDOBs() {
+        dobs.Mason = document.getElementById('dobMason').value;
+        dobs.Megan = document.getElementById('dobMegan').value;
+        dobs.Margaret = document.getElementById('dobMargaret').value;
+        localStorage.setItem('kidsDobs', JSON.stringify(dobs));
+        renderBodyTable(); // 更新年齡
+    }
+
+    function saveBodyStat() {
+        const d = document.getElementById('bDate').value;
+        const n = document.getElementById('bName').value;
+        const h = parseFloat(document.getElementById('bHeight').value);
+        const w = parseFloat(document.getElementById('bWeight').value);
+
+        if(!h || !w) return alert("請輸入身高與體重！");
+
+        bodyRecords.push({ id: Date.now(), date: d, name: n, height: h, weight: w });
+        localStorage.setItem('bodyRecords', JSON.stringify(bodyRecords));
+        
+        document.getElementById('bHeight').value = "";
+        document.getElementById('bWeight').value = "";
+        renderBodyTable();
+    }
+
+    function deleteBody(id) {
+        if(confirm("確定刪除此身體紀錄？")) {
+            bodyRecords = bodyRecords.filter(r => r.id !== id);
+            localStorage.setItem('bodyRecords', JSON.stringify(bodyRecords));
+            renderBodyTable();
+        }
+    }
+
+    function renderBodyTable() {
+        const tbody = document.querySelector('#bodyTable tbody');
+        if(bodyRecords.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="no-data">尚無身體數據</td></tr>'; return; }
+
+        tbody.innerHTML = bodyRecords.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).map(r => {
+            // 計算精準年齡
+            let ageStr = '--';
+            if(dobs[r.name]) {
+                const birth = new Date(dobs[r.name]);
+                const recD = new Date(r.date);
+                const diff = (recD - birth) / (1000 * 60 * 60 * 24 * 365.25);
+                if(diff > 0) ageStr = diff.toFixed(1) + '歲';
+            }
+            
+            // 計算 BMI (體重 / 身高的平方)
+            const bmi = (r.weight / Math.pow(r.height/100, 2)).toFixed(1);
+            
+            return `<tr>
+                <td>${r.date.slice(0,10)}</td>
+                <td><b>${r.name}</b></td>
+                <td style="color:#e91e63">${ageStr}</td>
+                <td><small>${r.height}cm<br>${r.weight}kg</small></td>
+                <td><b style="color:#8e44ad">${bmi}</b></td>
+                <td><button class="btn-del" onclick="deleteBody(${r.id})">刪</button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function exportBodyCSV() {
+        if(bodyRecords.length === 0) return alert("沒有數據可導出");
+        let csv = "\uFEFF日期,姓名,身高(cm),體重(kg),BMI\n";
+        bodyRecords.forEach(r => {
+            const bmi = (r.weight / Math.pow(r.height/100, 2)).toFixed(1);
+            csv += `${r.date},${r.name},${r.height},${r.weight},${bmi}\n`;
+        });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+        a.download = `三M身體成長紀錄.csv`; a.click();
+    }
+
+    /* ========== 運動追蹤功能 ========== */
     function saveRecord() {
         const res = document.getElementById('result').value;
         const eid = document.getElementById('editId').value;
@@ -163,7 +277,6 @@
             type: 'line',
             data: {
                 datasets: [{
-                    // 在這裡把 comp (比賽名稱) 也綁定到資料點上，供 Tooltip 讀取
                     data: data.map(r => ({ x: r.date, y: r.result, comp: r.comp })),
                     borderColor: name==='Mason'?'#1a73e8':name==='Megan'?'#e91e63':'#34a853',
                     backgroundColor: 'rgba(26, 115, 232, 0.1)',
@@ -181,8 +294,9 @@
                 scales: {
                     x: { 
                         type: 'time', 
-                        time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
-                        title: { display: true, text: '日期 (按比例分布)' }
+                        // 改動：這裡把顯示格式改成了 yyyy-MM-dd，加入年份顯示！
+                        time: { unit: 'day', displayFormats: { day: 'yyyy-MM-dd' } },
+                        title: { display: true, text: '日期' }
                     },
                     y: { 
                         reverse: isTrack,
@@ -191,20 +305,11 @@
                 },
                 plugins: {
                     legend: { display: false },
-                    // 自訂 Tooltip (提示框)
                     tooltip: {
-                        displayColors: false, // 隱藏顏色小方塊
+                        displayColors: false,
                         callbacks: {
-                            title: function(context) {
-                                // 覆寫標題，只顯示純日期 (例：2025-04-27)
-                                return context[0].raw.x; 
-                            },
-                            label: function(context) {
-                                // 覆寫內容，分兩行顯示成績與比賽名稱
-                                const resultText = `成績: ${context.raw.y} ${isTrack ? '秒' : '米'}`;
-                                const compText = `比賽: ${context.raw.comp || '練習'}`;
-                                return [resultText, compText];
-                            }
+                            title: function(context) { return context[0].raw.x; },
+                            label: function(context) { return [`成績: ${context.raw.y} ${isTrack ? '秒' : '米'}`, `比賽: ${context.raw.comp || '練習'}`]; }
                         }
                     },
                     zoom: {
@@ -227,10 +332,11 @@
         const tbody = document.querySelector('#historyTable tbody');
         if(records.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="no-data">尚無紀錄</td></tr>'; return; }
 
+        // 改動：表格的日期也順便顯示完整包含年份的格式 r.date
         tbody.innerHTML = records.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,100).map(r => {
             const isPB = r.result === pbMap[r.name+r.event];
             return `<tr>
-                <td>${r.date.slice(5)}<br><small style="color:#888">${r.event}</small></td>
+                <td>${r.date}<br><small style="color:#888">${r.event}</small></td>
                 <td>${r.name}</td>
                 <td>
                     <b>${r.result}</b>${trackEvents.includes(r.event)?'s':'m'}
@@ -282,7 +388,7 @@
     function cancelEdit() {
         document.getElementById('editId').value = "";
         document.getElementById('formTitle').innerText = "📝 錄入運動成績";
-        document.getElementById('submitBtn').innerText = "儲存數據";
+        document.getElementById('submitBtn').innerText = "儲存運動數據";
         document.getElementById('cancelBtn').style.display = "none";
         document.getElementById('result').value = "";
         document.getElementById('compName').value = "";
@@ -293,10 +399,9 @@
         if(records.length === 0) return alert("沒有數據可導出");
         let csv = "\uFEFF日期,比賽,姓名,項目,成績,獲獎\n";
         records.forEach(r => csv += `${r.date},${r.comp},${r.name},${r.event},${r.result},${r.award}\n`);
-        const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(b);
-        a.download = `三M紀錄_2.5.csv`; a.click();
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+        a.download = `三M運動紀錄.csv`; a.click();
     }
 
     function importCSV(ev) {
@@ -320,8 +425,13 @@
     }
 
     function resetZoom() { if(myChart) myChart.resetZoom(); }
-    function clearAll() { if(confirm("這將永久清空所有人的紀錄！確定嗎？")) { records = []; finishSave(); } }
-    function renderAll() { renderTable(); renderPbSummary(); updateChart(); }
+    
+    function renderAll() { 
+        renderTable(); 
+        renderPbSummary(); 
+        updateChart(); 
+        renderBodyTable(); 
+    }
 
     window.onload = renderAll;
 </script>
