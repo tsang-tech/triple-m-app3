@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>三M 運動追蹤 2.4 終極版</title>
+    <title>三M 運動追蹤 2.5 完美版</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -19,11 +19,9 @@
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         button { background: #1a73e8; color: white; border: none; padding: 12px; border-radius: 10px; cursor: pointer; flex: 1; font-weight: bold; font-size: 15px; }
         
-        /* 圖表容器優化 */
         .chart-container { position: relative; height: 320px; width: 100%; margin: 15px 0; touch-action: none; background: #fff; border-radius: 8px; }
         .hint { font-size: 0.8rem; color: #666; text-align: center; background: #e8f0fe; padding: 8px; border-radius: 8px; margin: 10px 0; }
         
-        /* 表格優化 */
         .table-wrapper { max-height: 350px; overflow-y: auto; border: 1px solid #eee; border-radius: 10px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         th, td { border-bottom: 1px solid #eee; padding: 12px 8px; text-align: left; }
@@ -165,7 +163,8 @@
             type: 'line',
             data: {
                 datasets: [{
-                    data: data.map(r => ({ x: r.date, y: r.result })),
+                    // 在這裡把 comp (比賽名稱) 也綁定到資料點上，供 Tooltip 讀取
+                    data: data.map(r => ({ x: r.date, y: r.result, comp: r.comp })),
                     borderColor: name==='Mason'?'#1a73e8':name==='Megan'?'#e91e63':'#34a853',
                     backgroundColor: 'rgba(26, 115, 232, 0.1)',
                     borderWidth: 3,
@@ -192,6 +191,22 @@
                 },
                 plugins: {
                     legend: { display: false },
+                    // 自訂 Tooltip (提示框)
+                    tooltip: {
+                        displayColors: false, // 隱藏顏色小方塊
+                        callbacks: {
+                            title: function(context) {
+                                // 覆寫標題，只顯示純日期 (例：2025-04-27)
+                                return context[0].raw.x; 
+                            },
+                            label: function(context) {
+                                // 覆寫內容，分兩行顯示成績與比賽名稱
+                                const resultText = `成績: ${context.raw.y} ${isTrack ? '秒' : '米'}`;
+                                const compText = `比賽: ${context.raw.comp || '練習'}`;
+                                return [resultText, compText];
+                            }
+                        }
+                    },
                     zoom: {
                         pan: { enabled: true, mode: 'x', threshold: 10 },
                         zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
@@ -281,7 +296,7 @@
         const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(b);
-        a.download = `三M紀錄_2.4.csv`; a.click();
+        a.download = `三M紀錄_2.5.csv`; a.click();
     }
 
     function importCSV(ev) {
