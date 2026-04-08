@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>三M 運動與成長追蹤 2.8</title>
+    <title>三M 運動與成長追蹤 2.9 冠軍版</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -15,6 +15,7 @@
         .card { background: white; padding: 18px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 15px; border: 1px solid #e1e8ed; }
         h2 { color: #1a73e8; margin-top: 0; font-size: 1.1rem; border-left: 5px solid #1a73e8; padding-left: 10px; margin-bottom: 15px; }
         .h2-purple { color: #8e44ad; border-left-color: #8e44ad; }
+        .h2-gold { color: #d35400; border-left-color: #f39c12; }
         .form-group { margin-bottom: 10px; }
         select, input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; font-size: 16px; -webkit-appearance: none; }
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
@@ -23,7 +24,6 @@
         .chart-container { position: relative; height: 320px; width: 100%; margin: 15px 0; touch-action: none; background: #fff; border-radius: 8px; }
         .hint { font-size: 0.8rem; color: #666; text-align: center; background: #e8f0fe; padding: 8px; border-radius: 8px; margin: 10px 0; }
         
-        /* 表格限制移除，改為自動適應 */
         .table-wrapper { max-height: 450px; overflow-y: auto; border: 1px solid #eee; border-radius: 10px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         th, td { border-bottom: 1px solid #eee; padding: 12px 8px; text-align: left; }
@@ -34,7 +34,6 @@
         .btn-del { background: #ff4757; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; }
         .no-data { text-align: center; padding: 40px; color: #999; font-style: italic; }
 
-        /* 新增：分頁導航樣式 */
         .tab-nav { display: flex; overflow-x: auto; background: white; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 6px; gap: 4px; }
         .tab-btn { flex: 1; min-width: 65px; background: none; border: none; padding: 10px 4px; font-size: 0.85rem; color: #7f8fa6; font-weight: bold; cursor: pointer; border-radius: 8px; transition: 0.2s; white-space: nowrap; }
         .tab-btn.active { background: #1a73e8; color: white; }
@@ -99,6 +98,28 @@
             <h2>🏅 PB 榮譽榜 (個人最佳)</h2>
             <div class="table-wrapper"><table id="pbSummaryTable"><thead><tr><th>運動項目</th><th>Mason</th><th>Megan</th><th>Margaret</th></tr></thead><tbody></tbody></table></div>
         </div>
+
+        <div class="card">
+            <h2 class="h2-gold">👑 全場總冠軍紀錄</h2>
+            
+            <div style="display:flex; gap:6px; margin-bottom:15px; flex-wrap:wrap;">
+                <input type="date" id="champDate" class="form-group" style="flex:1; min-width:40%; margin-bottom:0;">
+                <select id="champName" class="form-group" style="flex:1; min-width:40%; margin-bottom:0;"><option>Mason</option><option>Megan</option><option>Margaret</option></select>
+                <input type="text" id="champComp" placeholder="比賽名稱 (例: 陸運會)" class="form-group" style="flex:1; min-width:40%; margin-bottom:0;">
+                <input type="text" id="champCat" placeholder="組別 (例: 2019年男子組)" class="form-group" style="flex:1; min-width:28%; margin-bottom:0;">
+                <button onclick="saveChampion()" style="background:#f39c12; color:white; flex:1; min-width:30%; border:none;">＋ 新增冠軍</button>
+            </div>
+
+            <div id="champSummary" style="margin-bottom:10px; font-weight:bold; font-size:0.95rem; display:flex; gap:15px; justify-content:center; background:#fff8e1; padding:12px; border-radius:8px; border:1px solid #ffe082;">
+                </div>
+
+            <div class="table-wrapper" style="max-height: 250px;">
+                <table id="championTable">
+                    <thead><tr><th>日期</th><th>姓名</th><th>比賽/組別</th><th>操作</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <div id="tab-body" class="tab-content">
@@ -149,15 +170,13 @@
     const events = ["20米", "30米", "30米欄", "60米", "60米欄", "100米", "200米", "400米", "800米", "立定跳遠", "跳遠", "立定跨步跳", "立定三級跳", "擲豆袋", "擲壘球", "擲火箭槍"];
     const trackEvents = ["20米", "30米", "30米欄", "60米", "60米欄", "100米", "200米", "400米", "800米"];
     
-    // 運動數據
+    // 資料儲存 (運動、身體、生日、總冠軍)
     let records = JSON.parse(localStorage.getItem('sportsRecords')) || [];
     let myChart = null;
-
-    // 身體數據與生日 (永久保存)
     let dobs = JSON.parse(localStorage.getItem('kidsDobs')) || { Mason: "", Megan: "", Margaret: "" };
     let bodyRecords = JSON.parse(localStorage.getItem('bodyRecords')) || [];
+    let championRecords = JSON.parse(localStorage.getItem('championRecords')) || []; // 新增總冠軍資料
 
-    // 新增：獲取上一次輸入的比賽名稱
     let lastSavedComp = localStorage.getItem('lastCompName') || "";
 
     // 初始化下拉與日期
@@ -168,31 +187,23 @@
     const today = new Date();
     document.getElementById('date').valueAsDate = today;
     document.getElementById('bDate').valueAsDate = today;
+    document.getElementById('champDate').valueAsDate = today; // 新增冠軍日期初始化
     
-    // 初始化比賽名稱為上次輸入
     document.getElementById('compName').value = lastSavedComp;
 
-    // 初始化生日顯示 (網頁重載時自動填入已存資料)
     document.getElementById('dobMason').value = dobs.Mason;
     document.getElementById('dobMegan').value = dobs.Megan;
     document.getElementById('dobMargaret').value = dobs.Margaret;
 
     /* ========== 分頁切換功能 ========== */
     function showTab(tabId, btnElement) {
-        // 隱藏所有分頁
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        // 顯示目標分頁
         document.getElementById(tabId).classList.add('active');
         btnElement.classList.add('active');
-        
-        // 修復：圖表如果在隱藏狀態下會渲染錯誤，切換到圖表頁時強制更新
-        if (tabId === 'tab-chart') {
-            updateChart();
-        }
+        if (tabId === 'tab-chart') updateChart();
     }
 
-    // 精確計算「X歲Y個月」
     function getAgeString(birthDateStr, targetDateStr) {
         if (!birthDateStr || !targetDateStr) return '';
         const birth = new Date(birthDateStr);
@@ -212,12 +223,70 @@
         return res;
     }
 
+    /* ========== 新增：全場總冠軍追蹤功能 ========== */
+    function saveChampion() {
+        const d = document.getElementById('champDate').value;
+        const n = document.getElementById('champName').value;
+        const comp = document.getElementById('champComp').value;
+        const cat = document.getElementById('champCat').value;
+
+        if(!comp) return alert("請輸入總冠軍的「比賽名稱」！");
+
+        championRecords.push({ id: Date.now(), date: d, name: n, comp: comp, cat: cat });
+        localStorage.setItem('championRecords', JSON.stringify(championRecords));
+        
+        document.getElementById('champComp').value = ""; // 清空以便下次輸入
+        document.getElementById('champCat').value = "";
+        renderChampionTable();
+    }
+
+    function deleteChampion(id) {
+        if(confirm("確定刪除此筆總冠軍紀錄？")) {
+            championRecords = championRecords.filter(r => r.id !== id);
+            localStorage.setItem('championRecords', JSON.stringify(championRecords));
+            renderChampionTable();
+        }
+    }
+
+    function renderChampionTable() {
+        const tbody = document.querySelector('#championTable tbody');
+        const summaryDiv = document.getElementById('champSummary');
+        
+        // 統計奪冠次數
+        let counts = { Mason: 0, Megan: 0, Margaret: 0 };
+        championRecords.forEach(r => {
+            if (counts[r.name] !== undefined) counts[r.name]++;
+        });
+
+        // 渲染統計文字
+        summaryDiv.innerHTML = `
+            <span style="color:#1a73e8">Mason: ${counts.Mason}冠 🏆</span>
+            <span style="color:#e91e63">Megan: ${counts.Megan}冠 🏆</span>
+            <span style="color:#34a853">Margaret: ${counts.Margaret}冠 🏆</span>
+        `;
+
+        // 渲染清單
+        if(championRecords.length === 0) { 
+            tbody.innerHTML = '<tr><td colspan="4" class="no-data">尚無總冠軍紀錄，繼續加油！</td></tr>'; 
+            return; 
+        }
+
+        tbody.innerHTML = championRecords.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).map(r => {
+            return `<tr>
+                <td>${r.date.slice(0,10)}</td>
+                <td><b>${r.name}</b></td>
+                <td>${r.comp}<br><small style="color:#888">${r.cat || '未填組別'}</small></td>
+                <td><button class="btn-del" onclick="deleteChampion(${r.id})">刪</button></td>
+            </tr>`;
+        }).join('');
+    }
+
     /* ========== 身體追蹤功能 ========== */
     function saveDOBs() {
         dobs.Mason = document.getElementById('dobMason').value;
         dobs.Megan = document.getElementById('dobMegan').value;
         dobs.Margaret = document.getElementById('dobMargaret').value;
-        localStorage.setItem('kidsDobs', JSON.stringify(dobs)); // 永久保存
+        localStorage.setItem('kidsDobs', JSON.stringify(dobs)); 
         renderBodyTable(); 
         updateChart(); 
     }
@@ -300,7 +369,6 @@
             records.push(data);
         }
         
-        // 儲存最新的比賽名稱，供下次預設使用
         localStorage.setItem('lastCompName', currentComp);
         lastSavedComp = currentComp;
 
@@ -409,7 +477,6 @@
         const tbody = document.querySelector('#historyTable tbody');
         if(records.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="no-data">尚無紀錄</td></tr>'; return; }
 
-        // 修改：移除 .slice(0,100)，顯示全部資料
         tbody.innerHTML = records.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).map(r => {
             const isPB = r.result === pbMap[r.name+r.event];
             return `<tr>
@@ -460,7 +527,6 @@
         document.getElementById('submitBtn').innerText = "確認修改";
         document.getElementById('cancelBtn').style.display = "inline-block";
         
-        // 修改：點擊編輯時自動跳回「錄入」分頁
         showTab('tab-input', document.querySelector('.tab-btn'));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -473,7 +539,6 @@
         document.getElementById('result').value = "";
         document.getElementById('award').value = "";
         
-        // 修改：取消編輯後，自動恢復為上一次輸入的比賽名稱
         document.getElementById('compName').value = lastSavedComp;
     }
 
@@ -511,6 +576,7 @@
     function renderAll() { 
         renderTable(); 
         renderPbSummary(); 
+        renderChampionTable(); // 渲染總冠軍
         updateChart(); 
         renderBodyTable(); 
     }
