@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>三M 運動與成長追蹤 2.6</title>
+    <title>三M 運動與成長追蹤 2.7 極致版</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -143,13 +143,39 @@
     document.getElementById('dobMegan').value = dobs.Megan;
     document.getElementById('dobMargaret').value = dobs.Margaret;
 
+    // 新增：精確計算「X歲Y個月」的共用函數
+    function getAgeString(birthDateStr, targetDateStr) {
+        if (!birthDateStr || !targetDateStr) return '';
+        const birth = new Date(birthDateStr);
+        const target = new Date(targetDateStr);
+        if (target < birth) return '尚未出生';
+
+        let y = target.getFullYear() - birth.getFullYear();
+        let m = target.getMonth() - birth.getMonth();
+        
+        if (target.getDate() < birth.getDate()) {
+            m--;
+        }
+        if (m < 0) {
+            y--;
+            m += 12;
+        }
+        
+        if (y === 0 && m === 0) return '未滿月';
+        let res = '';
+        if (y > 0) res += y + '歲';
+        if (m > 0) res += m + '個月';
+        return res;
+    }
+
     /* ========== 身體追蹤功能 ========== */
     function saveDOBs() {
         dobs.Mason = document.getElementById('dobMason').value;
         dobs.Megan = document.getElementById('dobMegan').value;
         dobs.Margaret = document.getElementById('dobMargaret').value;
         localStorage.setItem('kidsDobs', JSON.stringify(dobs));
-        renderBodyTable(); // 更新年齡
+        renderBodyTable(); 
+        updateChart(); // 生日改變時，圖表的歲數也要更新
     }
 
     function saveBodyStat() {
@@ -181,16 +207,8 @@
         if(bodyRecords.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="no-data">尚無身體數據</td></tr>'; return; }
 
         tbody.innerHTML = bodyRecords.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).map(r => {
-            // 計算精準年齡
-            let ageStr = '--';
-            if(dobs[r.name]) {
-                const birth = new Date(dobs[r.name]);
-                const recD = new Date(r.date);
-                const diff = (recD - birth) / (1000 * 60 * 60 * 24 * 365.25);
-                if(diff > 0) ageStr = diff.toFixed(1) + '歲';
-            }
-            
-            // 計算 BMI (體重 / 身高的平方)
+            // 使用新的精確歲數函數
+            let ageStr = dobs[r.name] ? getAgeString(dobs[r.name], r.date) : '--';
             const bmi = (r.weight / Math.pow(r.height/100, 2)).toFixed(1);
             
             return `<tr>
@@ -260,6 +278,7 @@
         const name = document.getElementById('viewAthlete').value;
         const ev = document.getElementById('viewEvent').value;
         const isTrack = trackEvents.includes(ev);
+        const dobStr = dobs[name]; // 取得目前圖表選手的生日
 
         const data = records.filter(r => r.name === name && r.event === ev)
                            .sort((a,b) => new Date(a.date) - new Date(b.date));
@@ -277,7 +296,13 @@
             type: 'line',
             data: {
                 datasets: [{
-                    data: data.map(r => ({ x: r.date, y: r.result, comp: r.comp })),
+                    // 將計算好的年齡字串 (ageStr) 綁定到圖表數據中
+                    data: data.map(r => ({ 
+                        x: r.date, 
+                        y: r.result, 
+                        comp: r.comp,
+                        ageStr: dobStr ? getAgeString(dobStr, r.date) : ''
+                    })),
                     borderColor: name==='Mason'?'#1a73e8':name==='Megan'?'#e91e63':'#34a853',
                     backgroundColor: 'rgba(26, 115, 232, 0.1)',
                     borderWidth: 3,
@@ -294,7 +319,6 @@
                 scales: {
                     x: { 
                         type: 'time', 
-                        // 改動：這裡把顯示格式改成了 yyyy-MM-dd，加入年份顯示！
                         time: { unit: 'day', displayFormats: { day: 'yyyy-MM-dd' } },
                         title: { display: true, text: '日期' }
                     },
@@ -309,7 +333,18 @@
                         displayColors: false,
                         callbacks: {
                             title: function(context) { return context[0].raw.x; },
-                            label: function(context) { return [`成績: ${context.raw.y} ${isTrack ? '秒' : '米'}`, `比賽: ${context.raw.comp || '練習'}`]; }
+                            label: function(context) { 
+                                const raw = context.raw;
+                                const lines = [
+                                    `成績: ${raw.y} ${isTrack ? '秒' : '米'}`, 
+                                    `比賽: ${raw.comp || '練習'}`
+                                ];
+                                // 如果有算出年齡，就加在第三行
+                                if (raw.ageStr) {
+                                    lines.push(`年齡: ${raw.ageStr}`);
+                                }
+                                return lines;
+                            }
                         }
                     },
                     zoom: {
@@ -332,7 +367,6 @@
         const tbody = document.querySelector('#historyTable tbody');
         if(records.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="no-data">尚無紀錄</td></tr>'; return; }
 
-        // 改動：表格的日期也順便顯示完整包含年份的格式 r.date
         tbody.innerHTML = records.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,100).map(r => {
             const isPB = r.result === pbMap[r.name+r.event];
             return `<tr>
