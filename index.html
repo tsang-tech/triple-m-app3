@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>三M 運動與成長追蹤 2.7 極致版</title>
+    <title>三M 運動與成長追蹤 2.8</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -23,7 +23,8 @@
         .chart-container { position: relative; height: 320px; width: 100%; margin: 15px 0; touch-action: none; background: #fff; border-radius: 8px; }
         .hint { font-size: 0.8rem; color: #666; text-align: center; background: #e8f0fe; padding: 8px; border-radius: 8px; margin: 10px 0; }
         
-        .table-wrapper { max-height: 350px; overflow-y: auto; border: 1px solid #eee; border-radius: 10px; }
+        /* 表格限制移除，改為自動適應 */
+        .table-wrapper { max-height: 450px; overflow-y: auto; border: 1px solid #eee; border-radius: 10px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         th, td { border-bottom: 1px solid #eee; padding: 12px 8px; text-align: left; }
         th { background: #f8f9fa; position: sticky; top: 0; color: #777; z-index: 2; }
@@ -32,86 +33,113 @@
         .btn-edit { background: #ffa502; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; margin-right: 5px; }
         .btn-del { background: #ff4757; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; }
         .no-data { text-align: center; padding: 40px; color: #999; font-style: italic; }
+
+        /* 新增：分頁導航樣式 */
+        .tab-nav { display: flex; overflow-x: auto; background: white; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 6px; gap: 4px; }
+        .tab-btn { flex: 1; min-width: 65px; background: none; border: none; padding: 10px 4px; font-size: 0.85rem; color: #7f8fa6; font-weight: bold; cursor: pointer; border-radius: 8px; transition: 0.2s; white-space: nowrap; }
+        .tab-btn.active { background: #1a73e8; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-    <div class="card" id="inputCard">
-        <h2 id="formTitle">📝 錄入運動成績</h2>
-        <input type="hidden" id="editId">
-        <input type="date" id="date" class="form-group">
-        <input type="text" id="compName" placeholder="比賽/練習名稱 (例：校運會)" class="form-group">
-        <div class="btn-group">
-            <select id="athlete" style="flex:1"><option>Mason</option><option>Megan</option><option>Margaret</option></select>
-            <select id="event" style="flex:2"></select>
-        </div>
-        <input type="number" id="result" step="0.01" placeholder="成績 (秒 或 米)" class="form-group" style="margin-top:10px;">
-        <input type="text" id="award" placeholder="獎項紀錄 (選填)" class="form-group">
-        <div class="btn-group">
-            <button id="submitBtn" onclick="saveRecord()">儲存運動數據</button>
-            <button id="cancelBtn" onclick="cancelEdit()" style="display:none; background:#747d8c;">取消修改</button>
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="showTab('tab-input', this)">📝 錄入</button>
+        <button class="tab-btn" onclick="showTab('tab-chart', this)">📈 圖表</button>
+        <button class="tab-btn" onclick="showTab('tab-history', this)">🏆 歷史</button>
+        <button class="tab-btn" onclick="showTab('tab-pb', this)">🏅 PB榜</button>
+        <button class="tab-btn" onclick="showTab('tab-body', this)">🧬 成長</button>
+    </div>
+
+    <div id="tab-input" class="tab-content active">
+        <div class="card">
+            <h2 id="formTitle">📝 錄入運動成績</h2>
+            <input type="hidden" id="editId">
+            <input type="date" id="date" class="form-group">
+            <input type="text" id="compName" placeholder="比賽/練習名稱 (自動帶入上次輸入)" class="form-group">
+            <div class="btn-group">
+                <select id="athlete" style="flex:1"><option>Mason</option><option>Megan</option><option>Margaret</option></select>
+                <select id="event" style="flex:2"></select>
+            </div>
+            <input type="number" id="result" step="0.01" placeholder="成績 (秒 或 米)" class="form-group" style="margin-top:10px;">
+            <input type="text" id="award" placeholder="獎項紀錄 (選填)" class="form-group">
+            <div class="btn-group">
+                <button id="submitBtn" onclick="saveRecord()">儲存運動數據</button>
+                <button id="cancelBtn" onclick="cancelEdit()" style="display:none; background:#747d8c;">取消修改</button>
+            </div>
         </div>
     </div>
 
-    <div class="card">
-        <h2>📈 進步趨勢 (含年份顯示)</h2>
-        <div style="display:flex; gap:8px; margin-bottom:10px;">
-            <select id="viewAthlete" onchange="updateChart()" style="flex:1"><option>Mason</option><option>Megan</option><option>Margaret</option></select>
-            <select id="viewEvent" onchange="updateChart()" style="flex:1"></select>
+    <div id="tab-chart" class="tab-content">
+        <div class="card">
+            <h2>📈 進步趨勢</h2>
+            <div style="display:flex; gap:8px; margin-bottom:10px;">
+                <select id="viewAthlete" onchange="updateChart()" style="flex:1"><option>Mason</option><option>Megan</option><option>Margaret</option></select>
+                <select id="viewEvent" onchange="updateChart()" style="flex:1"></select>
+            </div>
+            <div class="hint">💡 <b>左右拖拽圖表</b> 查看歷史 | <b>雙指縮放</b> 調整間距<br>點擊資料點可查看當時年齡</div>
+            <div class="chart-container">
+                <canvas id="progressChart"></canvas>
+            </div>
+            <button onclick="resetZoom()" style="background:#f1f2f6; color:#2f3542; font-size:0.75rem; padding:8px; border:1px solid #ced4da; width:auto; margin-top:5px;">重置視野</button>
         </div>
-        <div class="hint">💡 <b>左右拖拽圖表</b> 查看歷史 | <b>雙指縮放</b> 調整間距</div>
-        <div class="chart-container">
-            <canvas id="progressChart"></canvas>
+    </div>
+
+    <div id="tab-history" class="tab-content">
+        <div class="card">
+            <h2>🏆 歷史明細 (全部紀錄)</h2>
+            <div class="table-wrapper"><table id="historyTable"><thead><tr><th>日期/項目</th><th>姓名</th><th>成績</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
-        <button onclick="resetZoom()" style="background:#f1f2f6; color:#2f3542; font-size:0.75rem; padding:8px; border:1px solid #ced4da; width:auto; margin-top:5px;">重置視野</button>
     </div>
 
-    <div class="card">
-        <h2>🏆 歷史明細 (最近 100 筆)</h2>
-        <div class="table-wrapper"><table id="historyTable"><thead><tr><th>日期/項目</th><th>姓名</th><th>成績</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+    <div id="tab-pb" class="tab-content">
+        <div class="card">
+            <h2>🏅 PB 榮譽榜 (個人最佳)</h2>
+            <div class="table-wrapper"><table id="pbSummaryTable"><thead><tr><th>運動項目</th><th>Mason</th><th>Megan</th><th>Margaret</th></tr></thead><tbody></tbody></table></div>
+        </div>
     </div>
 
-    <div class="card">
-        <h2>🏅 PB 榮譽榜 (個人最佳)</h2>
-        <div class="table-wrapper"><table id="pbSummaryTable"><thead><tr><th>運動項目</th><th>Mason</th><th>Megan</th><th>Margaret</th></tr></thead><tbody></tbody></table></div>
-    </div>
+    <div id="tab-body" class="tab-content">
+        <div class="card">
+            <h2 class="h2-purple">🧬 身體成長追蹤 (身高/體重/BMI)</h2>
+            
+            <div style="background:#f8f9fa; padding:12px; border-radius:10px; margin-bottom:15px; border:1px solid #e1e8ed;">
+                <div style="font-size:0.85rem; color:#555; margin-bottom:8px; font-weight:bold;">🎂 出生日期 (永久健康紀錄，自動計算精確年齡)</div>
+                <div style="display:flex; gap:8px;">
+                    <div style="flex:1"><small style="color:#888;">Mason</small><input type="date" id="dobMason" onchange="saveDOBs()" style="padding:8px; font-size:0.8rem; background:#fff;"></div>
+                    <div style="flex:1"><small style="color:#888;">Megan</small><input type="date" id="dobMegan" onchange="saveDOBs()" style="padding:8px; font-size:0.8rem; background:#fff;"></div>
+                    <div style="flex:1"><small style="color:#888;">Margaret</small><input type="date" id="dobMargaret" onchange="saveDOBs()" style="padding:8px; font-size:0.8rem; background:#fff;"></div>
+                </div>
+            </div>
 
-    <div class="card">
-        <h2 class="h2-purple">🧬 身體成長追蹤 (身高/體重/BMI)</h2>
-        
-        <div style="background:#f8f9fa; padding:12px; border-radius:10px; margin-bottom:15px; border:1px solid #eee;">
-            <div style="font-size:0.85rem; color:#555; margin-bottom:8px; font-weight:bold;">🎂 設定出生日期 (只需輸入一次，自動計算年齡)</div>
-            <div style="display:flex; gap:8px;">
-                <div style="flex:1"><small style="color:#888;">Mason</small><input type="date" id="dobMason" onchange="saveDOBs()" style="padding:8px; font-size:0.8rem"></div>
-                <div style="flex:1"><small style="color:#888;">Megan</small><input type="date" id="dobMegan" onchange="saveDOBs()" style="padding:8px; font-size:0.8rem"></div>
-                <div style="flex:1"><small style="color:#888;">Margaret</small><input type="date" id="dobMargaret" onchange="saveDOBs()" style="padding:8px; font-size:0.8rem"></div>
+            <div style="display:flex; gap:6px; margin-bottom:15px; flex-wrap:wrap;">
+                <input type="date" id="bDate" class="form-group" style="flex:1; min-width:40%; margin-bottom:0;">
+                <select id="bName" class="form-group" style="flex:1; min-width:40%; margin-bottom:0;"><option>Mason</option><option>Megan</option><option>Margaret</option></select>
+                <input type="number" id="bHeight" step="0.1" placeholder="身高(cm)" class="form-group" style="flex:1; min-width:28%; margin-bottom:0;">
+                <input type="number" id="bWeight" step="0.1" placeholder="體重(kg)" class="form-group" style="flex:1; min-width:28%; margin-bottom:0;">
+                <button onclick="saveBodyStat()" style="background:#8e44ad; flex:1; min-width:30%;">＋ 紀錄身體</button>
+            </div>
+
+            <div class="table-wrapper" style="max-height: 250px;">
+                <table id="bodyTable">
+                    <thead><tr><th>日期</th><th>姓名</th><th>年齡</th><th>數據</th><th>BMI</th><th>操作</th></tr></thead>
+                    <tbody></tbody>
+                </table>
             </div>
         </div>
 
-        <div style="display:flex; gap:6px; margin-bottom:15px; flex-wrap:wrap;">
-            <input type="date" id="bDate" class="form-group" style="flex:1; min-width:40%; margin-bottom:0;">
-            <select id="bName" class="form-group" style="flex:1; min-width:40%; margin-bottom:0;"><option>Mason</option><option>Megan</option><option>Margaret</option></select>
-            <input type="number" id="bHeight" step="0.1" placeholder="身高(cm)" class="form-group" style="flex:1; min-width:28%; margin-bottom:0;">
-            <input type="number" id="bWeight" step="0.1" placeholder="體重(kg)" class="form-group" style="flex:1; min-width:28%; margin-bottom:0;">
-            <button onclick="saveBodyStat()" style="background:#8e44ad; flex:1; min-width:30%;">＋ 紀錄身體</button>
-        </div>
-
-        <div class="table-wrapper">
-            <table id="bodyTable">
-                <thead><tr><th>日期</th><th>姓名</th><th>年齡</th><th>數據</th><th>BMI</th><th>操作</th></tr></thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="card" style="text-align:center; background:#f8f9fa;">
-        <div class="btn-group" style="flex-wrap: wrap;">
-            <button style="background:#2ed573" onclick="exportCSV()">導出 運動數據</button>
-            <button style="background:#8e44ad" onclick="exportBodyCSV()">導出 身體數據</button>
-        </div>
-        <div style="margin-top:10px;">
-            <button style="background:#747d8c; width:100%" onclick="document.getElementById('importFile').click()">匯入 運動CSV</button>
-            <input type="file" id="importFile" style="display:none" onchange="importCSV(event)">
+        <div class="card" style="text-align:center; background:#f8f9fa;">
+            <h2 style="color:#7f8fa6; border-left-color:#7f8fa6;">⚙️ 系統與備份</h2>
+            <div class="btn-group" style="flex-wrap: wrap;">
+                <button style="background:#2ed573" onclick="exportCSV()">導出 運動數據</button>
+                <button style="background:#8e44ad" onclick="exportBodyCSV()">導出 身體數據</button>
+            </div>
+            <div style="margin-top:10px;">
+                <button style="background:#747d8c; width:100%" onclick="document.getElementById('importFile').click()">匯入 運動CSV</button>
+                <input type="file" id="importFile" style="display:none" onchange="importCSV(event)">
+            </div>
         </div>
     </div>
 
@@ -125,9 +153,12 @@
     let records = JSON.parse(localStorage.getItem('sportsRecords')) || [];
     let myChart = null;
 
-    // 身體數據與生日
+    // 身體數據與生日 (永久保存)
     let dobs = JSON.parse(localStorage.getItem('kidsDobs')) || { Mason: "", Megan: "", Margaret: "" };
     let bodyRecords = JSON.parse(localStorage.getItem('bodyRecords')) || [];
+
+    // 新增：獲取上一次輸入的比賽名稱
+    let lastSavedComp = localStorage.getItem('lastCompName') || "";
 
     // 初始化下拉與日期
     const ev1 = document.getElementById('event');
@@ -137,13 +168,31 @@
     const today = new Date();
     document.getElementById('date').valueAsDate = today;
     document.getElementById('bDate').valueAsDate = today;
+    
+    // 初始化比賽名稱為上次輸入
+    document.getElementById('compName').value = lastSavedComp;
 
-    // 初始化生日顯示
+    // 初始化生日顯示 (網頁重載時自動填入已存資料)
     document.getElementById('dobMason').value = dobs.Mason;
     document.getElementById('dobMegan').value = dobs.Megan;
     document.getElementById('dobMargaret').value = dobs.Margaret;
 
-    // 新增：精確計算「X歲Y個月」的共用函數
+    /* ========== 分頁切換功能 ========== */
+    function showTab(tabId, btnElement) {
+        // 隱藏所有分頁
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        // 顯示目標分頁
+        document.getElementById(tabId).classList.add('active');
+        btnElement.classList.add('active');
+        
+        // 修復：圖表如果在隱藏狀態下會渲染錯誤，切換到圖表頁時強制更新
+        if (tabId === 'tab-chart') {
+            updateChart();
+        }
+    }
+
+    // 精確計算「X歲Y個月」
     function getAgeString(birthDateStr, targetDateStr) {
         if (!birthDateStr || !targetDateStr) return '';
         const birth = new Date(birthDateStr);
@@ -153,13 +202,8 @@
         let y = target.getFullYear() - birth.getFullYear();
         let m = target.getMonth() - birth.getMonth();
         
-        if (target.getDate() < birth.getDate()) {
-            m--;
-        }
-        if (m < 0) {
-            y--;
-            m += 12;
-        }
+        if (target.getDate() < birth.getDate()) { m--; }
+        if (m < 0) { y--; m += 12; }
         
         if (y === 0 && m === 0) return '未滿月';
         let res = '';
@@ -173,9 +217,9 @@
         dobs.Mason = document.getElementById('dobMason').value;
         dobs.Megan = document.getElementById('dobMegan').value;
         dobs.Margaret = document.getElementById('dobMargaret').value;
-        localStorage.setItem('kidsDobs', JSON.stringify(dobs));
+        localStorage.setItem('kidsDobs', JSON.stringify(dobs)); // 永久保存
         renderBodyTable(); 
-        updateChart(); // 生日改變時，圖表的歲數也要更新
+        updateChart(); 
     }
 
     function saveBodyStat() {
@@ -183,7 +227,6 @@
         const n = document.getElementById('bName').value;
         const h = parseFloat(document.getElementById('bHeight').value);
         const w = parseFloat(document.getElementById('bWeight').value);
-
         if(!h || !w) return alert("請輸入身高與體重！");
 
         bodyRecords.push({ id: Date.now(), date: d, name: n, height: h, weight: w });
@@ -207,10 +250,8 @@
         if(bodyRecords.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="no-data">尚無身體數據</td></tr>'; return; }
 
         tbody.innerHTML = bodyRecords.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).map(r => {
-            // 使用新的精確歲數函數
             let ageStr = dobs[r.name] ? getAgeString(dobs[r.name], r.date) : '--';
             const bmi = (r.weight / Math.pow(r.height/100, 2)).toFixed(1);
-            
             return `<tr>
                 <td>${r.date.slice(0,10)}</td>
                 <td><b>${r.name}</b></td>
@@ -238,12 +279,14 @@
     function saveRecord() {
         const res = document.getElementById('result').value;
         const eid = document.getElementById('editId').value;
+        const currentComp = document.getElementById('compName').value || "練習";
+        
         if(!res) return alert("請輸入成績！");
         
         const data = {
             id: eid ? parseInt(eid) : Date.now(),
             date: document.getElementById('date').value,
-            comp: document.getElementById('compName').value || "練習",
+            comp: currentComp,
             name: document.getElementById('athlete').value,
             event: document.getElementById('event').value,
             result: parseFloat(res),
@@ -256,6 +299,11 @@
         } else {
             records.push(data);
         }
+        
+        // 儲存最新的比賽名稱，供下次預設使用
+        localStorage.setItem('lastCompName', currentComp);
+        lastSavedComp = currentComp;
+
         finishSave();
     }
 
@@ -274,11 +322,12 @@
 
     function updateChart() {
         const canvas = document.getElementById('progressChart');
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
         const name = document.getElementById('viewAthlete').value;
         const ev = document.getElementById('viewEvent').value;
         const isTrack = trackEvents.includes(ev);
-        const dobStr = dobs[name]; // 取得目前圖表選手的生日
+        const dobStr = dobs[name]; 
 
         const data = records.filter(r => r.name === name && r.event === ev)
                            .sort((a,b) => new Date(a.date) - new Date(b.date));
@@ -296,7 +345,6 @@
             type: 'line',
             data: {
                 datasets: [{
-                    // 將計算好的年齡字串 (ageStr) 綁定到圖表數據中
                     data: data.map(r => ({ 
                         x: r.date, 
                         y: r.result, 
@@ -335,14 +383,8 @@
                             title: function(context) { return context[0].raw.x; },
                             label: function(context) { 
                                 const raw = context.raw;
-                                const lines = [
-                                    `成績: ${raw.y} ${isTrack ? '秒' : '米'}`, 
-                                    `比賽: ${raw.comp || '練習'}`
-                                ];
-                                // 如果有算出年齡，就加在第三行
-                                if (raw.ageStr) {
-                                    lines.push(`年齡: ${raw.ageStr}`);
-                                }
+                                const lines = [`成績: ${raw.y} ${isTrack ? '秒' : '米'}`, `比賽: ${raw.comp || '練習'}`];
+                                if (raw.ageStr) lines.push(`年齡: ${raw.ageStr}`);
                                 return lines;
                             }
                         }
@@ -367,7 +409,8 @@
         const tbody = document.querySelector('#historyTable tbody');
         if(records.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="no-data">尚無紀錄</td></tr>'; return; }
 
-        tbody.innerHTML = records.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,100).map(r => {
+        // 修改：移除 .slice(0,100)，顯示全部資料
+        tbody.innerHTML = records.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).map(r => {
             const isPB = r.result === pbMap[r.name+r.event];
             return `<tr>
                 <td>${r.date}<br><small style="color:#888">${r.event}</small></td>
@@ -416,6 +459,9 @@
         document.getElementById('formTitle').innerText = "✏️ 正在修改紀錄";
         document.getElementById('submitBtn').innerText = "確認修改";
         document.getElementById('cancelBtn').style.display = "inline-block";
+        
+        // 修改：點擊編輯時自動跳回「錄入」分頁
+        showTab('tab-input', document.querySelector('.tab-btn'));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -425,8 +471,10 @@
         document.getElementById('submitBtn').innerText = "儲存運動數據";
         document.getElementById('cancelBtn').style.display = "none";
         document.getElementById('result').value = "";
-        document.getElementById('compName').value = "";
         document.getElementById('award').value = "";
+        
+        // 修改：取消編輯後，自動恢復為上一次輸入的比賽名稱
+        document.getElementById('compName').value = lastSavedComp;
     }
 
     function exportCSV() {
