@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>三M 運動追蹤 2.1 (流暢滑動版)</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
-
+    <title>三M 運動追蹤 2.2</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    
     <style>
         body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 15px; background-color: #f0f2f5; }
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
@@ -16,41 +16,30 @@
         select, input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         button { background: #1a73e8; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; flex: 1; font-weight: bold; }
-        
-        /* 圖表專用設定：防止手機瀏覽器干擾滑動 */
-        .chart-container { 
-            position: relative; 
-            height: 350px; 
-            width: 100%; 
-            margin-top: 10px; 
-            touch-action: none; /* 重要：防止網頁跟著滑動，讓圖表接管觸控 */
-            user-select: none;
-            -webkit-user-select: none;
-        }
-
-        .hint { font-size: 0.75rem; color: #888; margin-top: 8px; text-align: center; line-height: 1.4; }
+        .chart-container { position: relative; height: 350px; width: 100%; margin-top: 10px; touch-action: pan-y; }
         .table-wrapper { max-height: 300px; overflow-y: auto; margin-top: 10px; border: 1px solid #eee; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         th, td { border-bottom: 1px solid #eee; padding: 12px 8px; text-align: left; }
+        th { background: #f8f9fa; position: sticky; top: 0; }
         .pb-text { color: #ea4335; font-weight: bold; }
-        .btn-edit { background: #f39c12; font-size: 0.8rem; padding: 5px 10px; }
-        .btn-danger { background: #ea4335; font-size: 0.8rem; padding: 5px 10px; }
-        .pb-summary-table td { font-weight: bold; }
+        .btn-edit { background: #f39c12; font-size: 0.8rem; padding: 5px 10px; border-radius: 4px; }
+        .btn-danger { background: #ea4335; font-size: 0.8rem; padding: 5px 10px; border-radius: 4px; }
+        .hint { font-size: 0.75rem; color: #888; margin-top: 8px; text-align: center; }
     </style>
 </head>
 <body>
 
     <div class="card" id="inputCard">
-        <h2 id="formTitle">📝 錄入成績</h2>
+        <h2 id="formTitle">📝 錄入紀錄</h2>
         <input type="hidden" id="editId">
         <input type="date" id="date" class="form-group">
-        <input type="text" id="compName" placeholder="比賽名稱" class="form-group">
+        <input type="text" id="compName" placeholder="比賽/練習名稱" class="form-group">
         <div class="btn-group">
             <select id="athlete" style="flex:1"><option>Mason</option><option>Megan</option><option>Margaret</option></select>
             <select id="event" style="flex:2"></select>
         </div>
         <input type="number" id="result" step="0.01" placeholder="成績 (秒/米)" class="form-group" style="margin-top:10px;">
-        <input type="text" id="award" placeholder="獲獎 (選填)" class="form-group">
+        <input type="text" id="award" placeholder="獲獎紀錄 (選填)" class="form-group">
         <div class="btn-group">
             <button id="submitBtn" onclick="saveRecord()">儲存紀錄</button>
             <button id="cancelBtn" onclick="cancelEdit()" class="btn-secondary" style="display:none; background:#666;">取消</button>
@@ -58,23 +47,20 @@
     </div>
 
     <div class="card">
-        <h2>📈 進步趨勢 (支援滑動/縮放)</h2>
-        <div class="filter-box" style="display:flex; gap:5px; margin-bottom:10px;">
+        <h2>📈 進步趨勢 (左右滑動/縮放)</h2>
+        <div style="display:flex; gap:5px; margin-bottom:10px;">
             <select id="viewAthlete" onchange="updateChart()" style="flex:1"><option>Mason</option><option>Megan</option><option>Margaret</option></select>
             <select id="viewEvent" onchange="updateChart()" style="flex:1"></select>
         </div>
         <div class="chart-container">
             <canvas id="progressChart"></canvas>
         </div>
-        <div class="hint">
-            👋 <b>單指左右滑動</b>：查看歷史紀錄<br>
-            🤌 <b>雙指張開縮放</b>：調整時間密度
-        </div>
-        <button onclick="resetZoom()" style="background:#f8f9fa; color:#666; font-size:0.7rem; border:1px solid #ddd; margin-top:10px; width:auto; padding:5px 15px;">重置視野</button>
+        <div class="hint">💡 手指左右拖拽可移動時間軸，雙指可縮放</div>
+        <button onclick="resetChartZoom()" style="background:#eee; color:#666; font-size:0.7rem; padding:5px; margin-top:10px; width:auto; border:1px solid #ccc;">重置視野</button>
     </div>
 
     <div class="card">
-        <h2>🏆 歷史紀錄</h2>
+        <h2>🏆 歷史紀錄 (最近 50 條)</h2>
         <div class="table-wrapper"><table id="historyTable"><thead><tr><th>日期</th><th>姓名</th><th>成績</th><th>操作</th></tr></thead><tbody></tbody></table></div>
     </div>
 
@@ -83,45 +69,66 @@
         <div class="table-wrapper"><table id="pbSummaryTable"><thead><tr><th>項目</th><th>Mason</th><th>Megan</th><th>Margaret</th></tr></thead><tbody></tbody></table></div>
     </div>
 
-    <div class="card" style="text-align:center;">
-        <button onclick="exportCSV()" style="background:#34a853; width:auto; padding:10px 20px;">導出數據備份</button>
-        <button onclick="document.getElementById('importFile').click()" style="background:#666; width:auto; padding:10px 20px; margin-left:10px;">匯入</button>
-        <input type="file" id="importFile" style="display:none" onchange="importCSV(event)">
+    <div class="card">
+        <div class="btn-group">
+            <button style="background:#34a853" onclick="exportCSV()">導出備份</button>
+            <button style="background:#5f6368" onclick="document.getElementById('importFile').click()">匯入數據</button>
+            <input type="file" id="importFile" style="display:none" onchange="importCSV(event)">
+        </div>
+        <button class="btn-danger" onclick="clearAll()" style="width:100%; margin-top:15px; background:none; color:#999; border:1px solid #ddd;">清空所有數據</button>
     </div>
 
 <script>
-    // 註冊縮放插件 (這是解決不能動的關鍵！)
-    Chart.register(window['chartjs-plugin-zoom']);
+    // 確保插件正確加載
+    try {
+        Chart.register(ChartZoom);
+    } catch (e) {
+        console.error("Zoom plugin registration failed, but app will still work.");
+    }
 
     const events = ["20米", "30米", "30米欄", "60米", "60米欄", "100米", "200米", "400米", "800米", "立定跳遠", "跳遠", "立定跨步跳", "立定三級跳", "擲豆袋", "擲壘球", "擲火箭槍"];
     const trackEvents = ["20米", "30米", "30米欄", "60米", "60米欄", "100米", "200米", "400米", "800米"];
+    
     let records = JSON.parse(localStorage.getItem('sportsRecords')) || [];
-    let myChart;
+    let myChart = null;
 
-    // 初始化下拉選單
+    // 初始化選單
     const ev1 = document.getElementById('event');
     const ev2 = document.getElementById('viewEvent');
-    events.forEach(e => { ev1.add(new Option(e,e)); ev2.add(new Option(e,e)); });
+    events.forEach(e => {
+        ev1.add(new Option(e, e));
+        ev2.add(new Option(e, e));
+    });
     document.getElementById('date').valueAsDate = new Date();
 
     function saveRecord() {
         const res = document.getElementById('result').value;
+        const eid = document.getElementById('editId').value;
         if(!res) return alert("請輸入成績");
+        
         const data = {
-            id: document.getElementById('editId').value || Date.now(),
+            id: eid ? parseInt(eid) : Date.now(),
             date: document.getElementById('date').value,
             comp: document.getElementById('compName').value || "練習",
             name: document.getElementById('athlete').value,
             event: document.getElementById('event').value,
             result: parseFloat(res),
-            award: document.getElementById('award').value
+            award: document.getElementById('award').value || ""
         };
-        
-        const idx = records.findIndex(r => r.id == data.id);
-        if(idx > -1) records[idx] = data; else records.push(data);
-        
-        localStorage.setItem('sportsRecords', JSON.stringify(records));
+
+        if(eid) {
+            const i = records.findIndex(r => r.id == eid);
+            if(i > -1) records[i] = data;
+        } else {
+            records.push(data);
+        }
+
+        saveData();
         cancelEdit();
+    }
+
+    function saveData() {
+        localStorage.setItem('sportsRecords', JSON.stringify(records));
         renderAll();
     }
 
@@ -131,8 +138,8 @@
         const ev = document.getElementById('viewEvent').value;
         const isTrack = trackEvents.includes(ev);
 
-        const data = records.filter(r => r.name === name && r.event === ev)
-                           .sort((a,b) => new Date(a.date) - new Date(b.date));
+        const filtered = records.filter(r => r.name === name && r.event === ev)
+                               .sort((a,b) => new Date(a.date) - new Date(b.date));
 
         if (myChart) myChart.destroy();
 
@@ -140,48 +147,32 @@
             type: 'line',
             data: {
                 datasets: [{
-                    data: data.map(r => ({ x: r.date, y: r.result })),
+                    label: ev,
+                    data: filtered.map(r => ({ x: r.date, y: r.result })),
                     borderColor: name==='Mason'?'#1a73e8':name==='Megan'?'#e91e63':'#34a853',
                     backgroundColor: 'rgba(0,0,0,0.05)',
-                    tension: 0.2,
                     fill: true,
-                    pointRadius: 6,
-                    pointHitRadius: 20
+                    tension: 0.2,
+                    pointRadius: 5
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: false, // 關閉動畫讓滑動更順暢
                 scales: {
-                    x: { 
-                        type: 'time', 
-                        time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
-                        grid: { display: false }
-                    },
+                    x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'MM/dd' } } },
                     y: { reverse: isTrack }
                 },
                 plugins: {
                     legend: { display: false },
                     zoom: {
-                        limits: { x: { min: 'original', max: 'original' } },
-                        pan: {
-                            enabled: true,
-                            mode: 'x',
-                            threshold: 5 // 靈敏度
-                        },
-                        zoom: {
-                            wheel: { enabled: true },
-                            pinch: { enabled: true },
-                            mode: 'x'
-                        }
+                        pan: { enabled: true, mode: 'x' },
+                        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
                     }
                 }
             }
         });
     }
-
-    function resetZoom() { if(myChart) myChart.resetZoom(); }
 
     function renderTable() {
         const pbMap = {};
@@ -194,9 +185,9 @@
         document.querySelector('#historyTable tbody').innerHTML = records.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,50).map(r => {
             const isPB = r.result === pbMap[r.name+r.event];
             return `<tr>
-                <td>${r.date.slice(5)}<br><small>${r.event}</small></td>
+                <td>${r.date.slice(5)}<br><small style="color:#888">${r.event}</small></td>
                 <td>${r.name}</td>
-                <td class="${isPB?'pb-text':''}"><b>${r.result}</b>${isPB?'<br><small>PB</small>':''}</td>
+                <td><b class="${isPB?'pb-text':''}">${r.result}</b>${isPB?'<br><small class="pb-text">PB</small>':''}</td>
                 <td><button class="btn-edit" onclick="editRecord(${r.id})">改</button></td>
             </tr>`;
         }).join('');
@@ -212,7 +203,7 @@
         });
         document.querySelector('#pbSummaryTable tbody').innerHTML = events.map(e => `
             <tr>
-                <td>${e}</td>
+                <td><b>${e}</b></td>
                 <td style="color:#1a73e8">${pbMap[e]?.Mason || '--'}</td>
                 <td style="color:#e91e63">${pbMap[e]?.Megan || '--'}</td>
                 <td style="color:#34a853">${pbMap[e]?.Margaret || '--'}</td>
@@ -222,47 +213,82 @@
 
     function editRecord(id) {
         const r = records.find(x => x.id == id);
+        if(!r) return;
         document.getElementById('editId').value = r.id;
         document.getElementById('date').value = r.date;
+        document.getElementById('compName').value = r.comp;
         document.getElementById('athlete').value = r.name;
         document.getElementById('event').value = r.event;
         document.getElementById('result').value = r.result;
         document.getElementById('award').value = r.award;
-        document.getElementById('formTitle').innerText = "✏️ 修改中...";
+        document.getElementById('formTitle').innerText = "✏️ 修改紀錄";
         document.getElementById('submitBtn').innerText = "更新數據";
         document.getElementById('cancelBtn').style.display = "block";
-        window.scrollTo(0,0);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function cancelEdit() {
         document.getElementById('editId').value = "";
-        document.getElementById('formTitle').innerText = "📝 錄入成績";
+        document.getElementById('formTitle').innerText = "📝 錄入紀錄";
         document.getElementById('submitBtn').innerText = "儲存紀錄";
         document.getElementById('cancelBtn').style.display = "none";
         document.getElementById('result').value = "";
+        document.getElementById('compName').value = "";
     }
 
     function exportCSV() {
-        let csv = "\uFEFF日期,姓名,項目,成績,獎項\n" + records.map(r => `${r.date},${r.name},${r.event},${r.result},${r.award}`).join('\n');
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
-        a.download = "三M數據備份.csv"; a.click();
+        if(records.length === 0) return alert("沒有數據");
+        let csv = "\uFEFF日期,比賽,姓名,項目,成績,獲獎\n";
+        records.forEach(r => csv += `${r.date},${r.comp},${r.name},${r.event},${r.result},${r.award}\n`);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `三M紀錄_修復版.csv`;
+        link.click();
     }
 
-    function importCSV(e) {
+    function importCSV(event) {
+        const file = event.target.files[0];
+        if (!file) return;
         const reader = new FileReader();
-        reader.onload = function(f) {
-            const rows = f.target.result.split('\n').slice(1);
-            records = rows.filter(r => r.trim()).map(r => {
-                const c = r.split(',');
-                return { id: Date.now()+Math.random(), date: c[0], name: c[1], event: c[2], result: parseFloat(c[3]), award: c[4] };
-            });
-            renderAll();
+        reader.onload = function(e) {
+            try {
+                const text = e.target.result;
+                const lines = text.split(/\r?\n/);
+                const newRecords = [];
+                for(let i = 1; i < lines.length; i++) {
+                    const cols = lines[i].split(',');
+                    if(cols.length >= 5 && cols[0].trim() !== "") {
+                        newRecords.push({
+                            id: Date.now() + i,
+                            date: cols[0].trim(),
+                            comp: cols[1].trim(),
+                            name: cols[2].trim(),
+                            event: cols[3].trim(),
+                            result: parseFloat(cols[4]),
+                            award: cols[5] ? cols[5].trim() : ""
+                        });
+                    }
+                }
+                if(newRecords.length > 0) {
+                    records = newRecords;
+                    saveData();
+                    alert("匯入成功！共 " + newRecords.length + " 條紀錄");
+                } else {
+                    alert("匯入失敗，請檢查 CSV 格式是否正確。");
+                }
+            } catch (err) {
+                alert("讀取檔案出錯：" + err);
+            }
         };
-        reader.readAsText(e.target.files[0]);
+        reader.readAsText(file);
     }
 
-    function renderAll() { updateChart(); renderTable(); renderPbSummary(); }
+    function resetChartZoom() { if(myChart) myChart.resetZoom(); }
+    function clearAll() { if(confirm("確定清空所有數據嗎？此操作不可恢復！")) { records = []; saveData(); } }
+    function renderAll() { renderTable(); renderPbSummary(); updateChart(); }
+
+    // 初始渲染
     renderAll();
 </script>
 </body>
